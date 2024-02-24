@@ -1,10 +1,10 @@
-import { readdir } from 'node:fs/promises'
 import { Database } from 'bun:sqlite'
+import { findByExtension } from './lib/fs'
 import { closeDbConnection, runSql } from './lib/mysql'
 import { cOk, cWarn, cError, cAdvice, cInfo } from './lib/console'
 
 //Getting all migration files
-const allFiles = await readdir('./migrations')
+const allFiles = await findByExtension('./migrations', 'js')
 
 //Getting all executed migrations
 const db = Database.open('./index.sqlite')
