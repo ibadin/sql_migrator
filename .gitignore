@@ -1,3 +1,4 @@
 index.sqlite
 .env
 .idea
+migrations/*.*

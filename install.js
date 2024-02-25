@@ -1,22 +1,19 @@
-import { Database } from "bun:sqlite"
-import { cOk, cWarn } from './lib/console'
+import { cError, cOk, cWarn } from './lib/console'
+import { closeDbConnection, runSql } from './lib/mysql'
 
-const dbFile = Bun.file("./index.sqlite")
-if (dbFile.size === 0) {
-   const db = Database.open('./index.sqlite')
-
-   const query = db.query(`
+try {
+  const sql = () => `
       CREATE TABLE migrations
       (
-         "id"        integer primary key,
-         "migration" varchar(255)
+          id int(11) NOT NULL AUTO_INCREMENT,
+          migration varchar(255) NOT NULL,
+          PRIMARY KEY (id)
       );
-   `)
-
-   query.run()
-
-   db.close()
-   cOk('Migration db was created!')
-} else {
-   cWarn('Migration db was already create!')
+  `
+  await runSql(sql)
+  cOk('Migration db was created!')
+} catch (e) {
+  console.log(e)
+  cError('Migration error', e)
 }
+closeDbConnection()

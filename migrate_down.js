@@ -1,32 +1,30 @@
 import { readdir } from 'node:fs/promises'
-import { Database } from 'bun:sqlite'
 import { closeDbConnection, runSql } from './lib/mysql'
 import { cOk, cWarn, cError } from './lib/console'
 
 //Getting all executed migrations
-const db = Database.open('./index.sqlite')
-const query = db.query(
-  `SELECT *
-   FROM migrations
-   ORDER BY id DESC
-   LIMIT 1
-  `,
-)
-const executedMigrations = query.all().map(item => item.migration)
+const [rows] = await runSql(() => `
+    SELECT *
+    FROM migrations
+    ORDER BY id DESC
+    LIMIT 1
+`)
+
+const executedMigrations = rows.map(item => item.migration)
 
 if (executedMigrations.length > 0) {
   const file = executedMigrations[0]
   const { down } = await import(`./migrations/${file}`)
   try {
-    if (typeof down() !== 'undefined' && down()?.replace(/[\n\r]+/g, '').replace(/\s{2,10}/g, ' ').length > 0) {
+    if (typeof down() !== 'undefined' &&
+      down()?.replace(/[\n\r]+/g, '').replace(/\s{2,10}/g, ' ').length > 0) {
       await runSql(down)
-      const del = db.query(`
+      await runSql(() => `
           DELETE
           FROM migrations
-          WHERE migration = '${file}';
+          WHERE migration = '${file}'
       `)
 
-      del.run()
       cOk(`${file} migrate rollback!`)
     } else {
       cWarn(`${file} rollback migrate has empty sql!`)
@@ -34,13 +32,11 @@ if (executedMigrations.length > 0) {
       process.stdout.write(prompt)
       for await (const line of console) {
         if (line === 'y') {
-          const del = db.query(`
+          await runSql(() => `
               DELETE
               FROM migrations
-              WHERE migration = '${file}';
+              WHERE migration = '${file}'
           `)
-
-          del.run()
           cOk(`${file} migrate rollback!`)
         }
         break

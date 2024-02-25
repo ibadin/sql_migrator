@@ -1,4 +1,3 @@
-import { Database } from 'bun:sqlite'
 import { findByExtension } from './lib/fs'
 import { closeDbConnection, runSql } from './lib/mysql'
 import { cOk, cWarn, cError, cAdvice, cInfo } from './lib/console'
@@ -7,12 +6,14 @@ import { cOk, cWarn, cError, cAdvice, cInfo } from './lib/console'
 const allFiles = await findByExtension('./migrations', 'js')
 
 //Getting all executed migrations
-const db = Database.open('./index.sqlite')
-const query = db.query(`SELECT *
-                        FROM migrations`)
-const executedMigrations = query.all().map(item => item.migration)
+const [rows] = await runSql(() => `
+    SELECT *
+    FROM migrations
+`)
 
-//Filtering files for migration
+const executedMigrations = rows.map(item => item.migration)
+
+// //Filtering files for migration
 const filesForMigrations = allFiles.sort().
   filter(file => !executedMigrations.includes(file))
 
@@ -23,12 +24,11 @@ if (filesForMigrations.length > 0) {
 
     try {
       await runSql(up)
-      const insert = db.query(`
-        INSERT INTO migrations (migration)
-        VALUES ('${file}')
-    `)
+      await runSql(() => `
+          INSERT INTO migrations (migration)
+          VALUES ('${file}')
+      `)
 
-      insert.run()
       cOk(`${file} migrate executed!`)
     } catch (e) {
       cError(`${file} migrate crashed!`, e)
@@ -41,8 +41,3 @@ if (filesForMigrations.length > 0) {
 
 //Closing mysql db connection for exit from this script
 closeDbConnection()
-
-
-
-
-
